@@ -252,6 +252,7 @@ class MinimumSpanningTree:
 
     # this part of the code it to draw line between centers in shape file
     def draw_line(self):
+        nonsymmetric_list = {}  # this dict. is for incresse the performance of the algo.
         self.all_edge_list = []
         layer = self.activelayer
         epsg = layer.crs().postgisSrid()
@@ -288,19 +289,37 @@ class MinimumSpanningTree:
                     # add the geometry to the feature,
                     # create a new memory layer
                     # create a new feature
-                    seg = QgsFeature()
-                    seg.setGeometry(QgsGeometry.fromPolyline([start, end]))
-                    # add the geometry to the layer
-                    seg.setAttributes([i, feature1.id(), feature.id(),seg.geometry().length()])
-                    pr.addFeatures([seg])
-                    # update extent of the layer (not necessary)
-                    v_layer.updateExtents()
-                    v_layer.updateFeature(seg)
-                    v_layer.commitChanges()
-                    newEdge = [i, [feature1.id(),feature.id()], int(seg.geometry().length())]
-
-                    self.all_edge_list.append(newEdge)
-                    i += 1
+                    if feature.id() not in nonsymmetric_list.keys():  # v.2 for non symmetric dge list
+                        nonsymmetric_list[feature.id()] = [feature1.id()]
+                        seg = QgsFeature()
+                        seg.setGeometry(QgsGeometry.fromPolyline([start, end]))
+                        # add the geometry to the layer
+                        seg.setAttributes([i, feature1.id(), feature.id(),seg.geometry().length()])
+                        pr.addFeatures([seg])
+                        # update extent of the layer (not necessary)
+                        v_layer.updateExtents()
+                        v_layer.updateFeature(seg)
+                        v_layer.commitChanges()
+                        newEdge = [i, [feature1.id(),feature.id()], int(seg.geometry().length())]
+                        self.all_edge_list.append(newEdge)
+                        i += 1
+                    else:
+                        for key, value in nonsymmetric_list.items():
+                            if key == feature.id():
+                                if feature1.id() not in value:
+                                    nonsymmetric_list[feature.id()] = value.append(feature1.id())
+                                    seg = QgsFeature()
+                                    seg.setGeometry(QgsGeometry.fromPolyline([start, end]))
+                                    # add the geometry to the layer
+                                    seg.setAttributes([i, feature1.id(), feature.id(), seg.geometry().length()])
+                                    pr.addFeatures([seg])
+                                    # update extent of the layer (not necessary)
+                                    v_layer.updateExtents()
+                                    v_layer.updateFeature(seg)
+                                    v_layer.commitChanges()
+                                    newEdge = [i, [feature1.id(), feature.id()], int(seg.geometry().length())]
+                                    self.all_edge_list.append(newEdge)
+                                    i += 1
         QgsProject.instance().addMapLayer(v_layer)
 
     # find the MST of our edges.
